@@ -16,6 +16,8 @@ import com.bookfair.backend.service.payment.strategy.PaymentProvider;
 import com.bookfair.backend.util.CommonMessages;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -113,12 +115,14 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse getPaymentById(Long paymentId) {
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.PAYMENT_NOT_FOUND));
+        verifyOwnership(payment);
 
         return mapToPaymentResponse(payment);
     }
 
     @Override
     public List<PaymentResponse> getAllPayments() {
+        verifyAdminAccess();
         return paymentRepository.findAll()
                 .stream()
                 .map(this::mapToPaymentResponse)
@@ -127,6 +131,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     public List<PaymentResponse> getPaymentsByUserId(Long userId) {
+        verifyUserAccess(userId);
         System.out.println("DEBUG: Fetching payments for userId: " + userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.USER_NOT_FOUND));
@@ -143,6 +148,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponse updatePayment(Long id, PaymentRequest paymentRequest) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.PAYMENT_NOT_FOUND));
+        verifyOwnership(payment);
 
         if (paymentRequest.getAmount() != null) {
             payment.setAmount(paymentRequest.getAmount());
@@ -164,6 +170,7 @@ public class PaymentServiceImpl implements PaymentService {
     public void deletePayment(Long id) {
         Payment payment = paymentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.PAYMENT_NOT_FOUND));
+        verifyOwnership(payment);
 
         // [GUARDRAIL] Audit Shield: Block deletion of successful or pending payments
         if (payment.getPaymentStatus() == com.bookfair.backend.enums.PaymentStatus.SUCCESS) {
@@ -219,4 +226,60 @@ public class PaymentServiceImpl implements PaymentService {
                 .build();
     }
 
+    private void verifyOwnership(Payment payment) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (isAdmin) {
+            return;
+        }
+
+        String currentUserEmail = authentication.getName();
+        if (payment.getReservation() != null && 
+            payment.getReservation().getUser() != null && 
+            !payment.getReservation().getUser().getEmail().equals(currentUserEmail)) {
+            throw new RuntimeException("Unauthorized access to payment");
+        }
+    }
+
+    private void verifyAdminAccess() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            throw new RuntimeException("Unauthorized: Admin access required");
+        }
+    }
+
+    private void verifyUserAccess(Long userId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (isAdmin) {
+            return;
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException(CommonMessages.USER_NOT_FOUND));
+
+        String currentUserEmail = authentication.getName();
+        if (!user.getEmail().equals(currentUserEmail)) {
+            throw new RuntimeException("Unauthorized access to user payments");
+        }
+    }
 }
