@@ -11,4 +11,5 @@ public interface AuthService {
     void forgotPassword(String email);
     void verifyOtp(String email, String otp);
     void resetPassword(com.bookfair.backend.dto.PasswordResetRequest request);
+    void logout(String token);
 }

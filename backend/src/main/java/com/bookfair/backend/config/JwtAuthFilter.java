@@ -21,6 +21,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final com.bookfair.backend.repository.BlacklistedTokenRepository blacklistedTokenRepository;
 
     @Override
     protected void doFilterInternal(
@@ -51,6 +52,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (jwt == null) {
             filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (blacklistedTokenRepository.existsByToken(jwt)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Token has been revoked/logged out");
             return;
         }
 

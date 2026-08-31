@@ -25,13 +25,16 @@ public class AuthServiceImpl implements AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final PasswordResetTokenRepository tokenRepository;
     private final EmailService emailService;
+    private final com.bookfair.backend.repository.BlacklistedTokenRepository blacklistedTokenRepository;
 
     public AuthServiceImpl(UserRepository userRepository, JwtService jwtService,
-                           PasswordResetTokenRepository tokenRepository, EmailService emailService) {
+                           PasswordResetTokenRepository tokenRepository, EmailService emailService,
+                           com.bookfair.backend.repository.BlacklistedTokenRepository blacklistedTokenRepository) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.tokenRepository = tokenRepository;
         this.emailService = emailService;
+        this.blacklistedTokenRepository = blacklistedTokenRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
@@ -161,6 +164,16 @@ public class AuthServiceImpl implements AuthService {
         
         if (!hasUpper || !hasLower || !hasDigit || !hasSpecial) {
             throw new RuntimeException("Password must include uppercase, lowercase, number, and symbol");
+        }
+    }
+
+    @Override
+    public void logout(String token) {
+        if (token != null && !token.trim().isEmpty() && !blacklistedTokenRepository.existsByToken(token)) {
+            com.bookfair.backend.model.BlacklistedToken blacklistedToken = new com.bookfair.backend.model.BlacklistedToken();
+            blacklistedToken.setToken(token);
+            blacklistedToken.setBlacklistedAt(LocalDateTime.now());
+            blacklistedTokenRepository.save(blacklistedToken);
         }
     }
 }

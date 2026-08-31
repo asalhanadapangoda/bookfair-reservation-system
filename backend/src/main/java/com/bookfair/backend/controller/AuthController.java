@@ -72,7 +72,20 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
+    public ResponseEntity<Void> logout(jakarta.servlet.http.HttpServletRequest request, HttpServletResponse response) {
+        String token = null;
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("authToken".equals(cookie.getName())) {
+                    token = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        if (token != null) {
+            authService.logout(token);
+        }
+
         ResponseCookie cookie = ResponseCookie.from("authToken", "")
                 .httpOnly(true)
                 .secure(false) // Set to true in production with HTTPS
