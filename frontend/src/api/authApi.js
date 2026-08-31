@@ -7,22 +7,52 @@ import { resolveRoleByEmail } from './dashboardApi';
  * @param {string} password 
  * @returns {Promise<Object>} Response data
  */
+const decodeToken = (token) => {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
+};
+
+/**
+ * Log in the user
+ * @param {string} email 
+ * @param {string} password 
+ * @returns {Promise<Object>} Response data
+ */
 export const loginUser = async (email, password) => {
     try {
         const response = await client.post('/auth/login', { email, password });
 
         if (response.data.token) {
             // Token is now set securely via HttpOnly cookie in the backend response
-
-            const roleData = await resolveRoleByEmail(email);
-            const userData = {
-                businessName: response.data.businessName ?? '',
-                contactPerson: response.data.contactPerson ?? '',
-                email,
-                role: roleData.role,
-                userId: response.data.userId || roleData.userId,
-            };
-            localStorage.setItem('user', JSON.stringify(userData));
+            const decoded = decodeToken(response.data.token);
+            if (decoded) {
+                const userData = {
+                    businessName: response.data.businessName || decoded.name || '',
+                    contactPerson: response.data.contactPerson || decoded.name || '',
+                    email: decoded.email || email,
+                    role: decoded.role,
+                    userId: decoded.userId || response.data.userId,
+                };
+                localStorage.setItem('user', JSON.stringify(userData));
+            } else {
+                const roleData = await resolveRoleByEmail(email);
+                const userData = {
+                    businessName: response.data.businessName ?? '',
+                    contactPerson: response.data.contactPerson ?? '',
+                    email,
+                    role: roleData.role,
+                    userId: response.data.userId || roleData.userId,
+                };
+                localStorage.setItem('user', JSON.stringify(userData));
+            }
         }
 
         return { success: true, data: response.data, user: JSON.parse(localStorage.getItem('user')) };

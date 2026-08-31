@@ -20,9 +20,15 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
-    public String generateToken(String email) {
+    public String generateToken(com.bookfair.backend.model.User user) {
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(user.getEmail())
+                .setIssuer("http://localhost:8080/api/auth")
+                .setAudience("bookfair-client-app")
+                .claim("email", user.getEmail())
+                .claim("name", user.getContactPerson() != null ? user.getContactPerson() : user.getBusinessName())
+                .claim("role", user.getRole().name())
+                .claim("userId", user.getId())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
@@ -35,7 +41,16 @@ public class JwtService {
 
     public boolean isTokenValid(String token, String userEmail) {
         final String username = extractUsername(token);
-        return (username.equals(userEmail)) && !isTokenExpired(token);
+        final String issuer = extractClaim(token, Claims::getIssuer);
+        final String audience = extractClaim(token, Claims::getAudience);
+        
+        boolean isIssuerValid = "http://localhost:8080/api/auth".equals(issuer);
+        boolean isAudienceValid = "bookfair-client-app".equals(audience);
+        
+        return (username.equals(userEmail)) 
+                && !isTokenExpired(token) 
+                && isIssuerValid 
+                && isAudienceValid;
     }
 
     private boolean isTokenExpired(String token) {

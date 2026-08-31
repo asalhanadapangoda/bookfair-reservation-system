@@ -55,7 +55,7 @@ public class AuthServiceImpl implements AuthService {
 
             userRepository.save(user);
 
-            String token = jwtService.generateToken(user.getEmail());
+            String token = jwtService.generateToken(user);
             return new AuthResponse(user.getId(), user.getBusinessName(), user.getContactPerson(), token);
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
@@ -72,7 +72,7 @@ public class AuthServiceImpl implements AuthService {
             throw new RuntimeException(CommonMessages.INVALID_EMAIL_OR_PASSWORD);
         }
 
-        String token = jwtService.generateToken(user.getEmail());
+        String token = jwtService.generateToken(user);
         return new AuthResponse(user.getId(), user.getBusinessName(), user.getContactPerson(), token);
     }
 
