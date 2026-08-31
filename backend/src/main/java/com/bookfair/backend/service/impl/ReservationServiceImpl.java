@@ -39,8 +39,23 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     public ReservationResponse createReservation(ReservationRequest reservationRequest) {
 
-        User user = userRepository.findById(reservationRequest.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException(CommonMessages.USER_NOT_FOUND));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ValidationException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        User user;
+        if (isAdmin && reservationRequest.getUserId() != null) {
+            user = userRepository.findById(reservationRequest.getUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException(CommonMessages.USER_NOT_FOUND));
+        } else {
+            String currentUserEmail = authentication.getName();
+            user = userRepository.findByEmail(currentUserEmail)
+                    .orElseThrow(() -> new ResourceNotFoundException(CommonMessages.USER_NOT_FOUND));
+        }
 
         List<Reservation> userReservations = reservationRepository.findByUserId(user.getId());
         long activeStallsCount = userReservations.stream()

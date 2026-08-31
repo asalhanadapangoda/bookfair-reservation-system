@@ -107,35 +107,53 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void verifyOtp(String email, String otp) {
-        PasswordResetToken resetToken = tokenRepository.findByToken(otp)
-                .orElseThrow(() -> new RuntimeException("Invalid or missing OTP"));
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Invalid email"));
+
+        PasswordResetToken resetToken = tokenRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("No active OTP found for this email"));
+
+        if (resetToken.getAttempts() >= 3) {
+            tokenRepository.delete(resetToken);
+            throw new RuntimeException("Too many failed attempts. Please request a new OTP.");
+        }
 
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
             tokenRepository.delete(resetToken);
             throw new RuntimeException("OTP has expired");
         }
 
-        if (!resetToken.getUser().getEmail().equals(email)) {
-            throw new RuntimeException("OTP does not belong to this email");
+        if (!resetToken.getToken().equals(otp)) {
+            resetToken.setAttempts(resetToken.getAttempts() + 1);
+            tokenRepository.save(resetToken);
+            throw new RuntimeException("Invalid OTP");
         }
     }
 
     @Override
     @org.springframework.transaction.annotation.Transactional
     public void resetPassword(com.bookfair.backend.dto.PasswordResetRequest request) {
-        PasswordResetToken resetToken = tokenRepository.findByToken(request.getOtp())
-                .orElseThrow(() -> new RuntimeException("Invalid or missing OTP"));
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Invalid email"));
+
+        PasswordResetToken resetToken = tokenRepository.findByUser(user)
+                .orElseThrow(() -> new RuntimeException("No active OTP found for this email"));
+
+        if (resetToken.getAttempts() >= 3) {
+            tokenRepository.delete(resetToken);
+            throw new RuntimeException("Too many failed attempts. Please request a new OTP.");
+        }
 
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
             tokenRepository.delete(resetToken);
             throw new RuntimeException("Token has expired");
         }
 
-        if (!resetToken.getUser().getEmail().equals(request.getEmail())) {
-            throw new RuntimeException("Token does not belong to this email");
+        if (!resetToken.getToken().equals(request.getOtp())) {
+            resetToken.setAttempts(resetToken.getAttempts() + 1);
+            tokenRepository.save(resetToken);
+            throw new RuntimeException("Invalid OTP");
         }
-
-        User user = resetToken.getUser();
         
         validatePasswordComplexity(request.getNewPassword());
         
