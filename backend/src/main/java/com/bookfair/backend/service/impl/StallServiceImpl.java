@@ -22,6 +22,7 @@ public class StallServiceImpl implements StallService {
 
     @Override
     public StallResponse createStall(StallRequest stallRequest) {
+        verifyAdminAccess();
         if (stallRepository.existsByStallCode(stallRequest.getStallCode())) {
             throw new RuntimeException(CommonMessages.STALL_CODE_ALREADY_EXISTS);
         }
@@ -69,6 +70,7 @@ public class StallServiceImpl implements StallService {
 
     @Override
     public StallResponse updateStall(Long id, StallRequest stallRequest) {
+        verifyAdminAccess();
         Stall stall = stallRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.STALL_NOT_FOUND));
 
@@ -99,6 +101,7 @@ public class StallServiceImpl implements StallService {
 
     @Override
     public void deleteStall(Long id) {
+        verifyAdminAccess();
         Stall stall = stallRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.STALL_NOT_FOUND));
 
@@ -119,5 +122,19 @@ public class StallServiceImpl implements StallService {
                 .price(stall.getPrice())
                 .stallStatus(stall.getStallStatus())
                 .build();
+    }
+
+    private void verifyAdminAccess() {
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            throw new RuntimeException("Unauthorized: Admin access required");
+        }
     }
 }

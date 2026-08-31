@@ -26,6 +26,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<User> getAllVendors() {
+        verifyAdminAccess();
         return userRepository.findAll().stream()
                 .filter(user -> user.getRole() == Role.BUSINESS) // Assuming BUSINESS is vendor
                 .collect(Collectors.toList());
@@ -33,6 +34,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getVendorById(Long id) {
+        verifyUserAccess(id);
         return userRepository.findById(id)
                 .filter(user -> user.getRole() == Role.BUSINESS)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.VENDOR_NOT_FOUND));
@@ -48,6 +50,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getUserById(Long id) {
+        verifyUserAccess(id);
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
@@ -55,6 +58,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public User updateUser(Long id, User userDetails) {
+        verifyUserAccess(id);
         User user = getUserById(id);
 
         if (userDetails.getBusinessName() != null) user.setBusinessName(userDetails.getBusinessName());
@@ -109,7 +113,63 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User getUserByEmail(String email) {
+        verifyUserAccessByEmail(email);
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+    }
+
+    private void verifyAdminAccess() {
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            throw new RuntimeException("Unauthorized: Admin access required");
+        }
+    }
+
+    private void verifyUserAccess(Long userId) {
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (isAdmin) {
+            return;
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException(CommonMessages.USER_NOT_FOUND));
+
+        String currentUserEmail = authentication.getName();
+        if (!user.getEmail().equals(currentUserEmail)) {
+            throw new RuntimeException("Unauthorized access to user profile");
+        }
+    }
+
+    private void verifyUserAccessByEmail(String email) {
+        org.springframework.security.core.Authentication authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new RuntimeException("Not authenticated");
+        }
+
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (isAdmin) {
+            return;
+        }
+
+        String currentUserEmail = authentication.getName();
+        if (!email.equals(currentUserEmail)) {
+            throw new RuntimeException("Unauthorized access to user profile");
+        }
     }
 }
