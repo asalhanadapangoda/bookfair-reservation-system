@@ -7,15 +7,12 @@ const client = axios.create({
         'Content-Type': 'application/json',
     },
     timeout: 30000,
+    withCredentials: true, // Crucial for sending cookies automatically
 });
 
-// Request Interceptor: Attach Token
+// Request Interceptor: No longer inject Authorization header manually, the browser will send the HttpOnly cookie
 client.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('authToken');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
         return config;
     },
     (error) => {

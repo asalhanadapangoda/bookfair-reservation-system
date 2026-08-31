@@ -12,7 +12,7 @@ export const loginUser = async (email, password) => {
         const response = await client.post('/auth/login', { email, password });
 
         if (response.data.token) {
-            localStorage.setItem('authToken', response.data.token);
+            // Token is now set securely via HttpOnly cookie in the backend response
 
             const roleData = await resolveRoleByEmail(email);
             const userData = {
@@ -120,7 +120,11 @@ export const resetPasswordNew = async (email, otp, newPassword) => {
 /**
  * Logout the user
  */
-export const logoutUser = () => {
-    localStorage.removeItem('authToken');
+export const logoutUser = async () => {
+    try {
+        await client.post('/auth/logout');
+    } catch (error) {
+        console.error("Logout failed:", error);
+    }
     localStorage.removeItem('user');
 };

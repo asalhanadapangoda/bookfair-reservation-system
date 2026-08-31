@@ -5,8 +5,11 @@ import com.bookfair.backend.dto.LoginRequest;
 import com.bookfair.backend.dto.RegisterRequest;
 import com.bookfair.backend.service.AuthService;
 import com.bookfair.backend.util.ApiEndpoints;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -24,13 +27,17 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest) {
-        return ResponseEntity.ok(authService.register(registerRequest));
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest, HttpServletResponse response) {
+        AuthResponse authResponse = authService.register(registerRequest);
+        setTokenCookie(response, authResponse.getToken());
+        return ResponseEntity.ok(authResponse);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
-        return ResponseEntity.ok(authService.login(loginRequest));
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+        AuthResponse authResponse = authService.login(loginRequest);
+        setTokenCookie(response, authResponse.getToken());
+        return ResponseEntity.ok(authResponse);
     }
 
     @PostMapping({"/verify-email", "/verify_email"})
@@ -62,5 +69,31 @@ public class AuthController {
     public ResponseEntity<Void> resetPassword(@RequestBody com.bookfair.backend.dto.PasswordResetRequest request) {
         authService.resetPassword(request);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("authToken", "")
+                .httpOnly(true)
+                .secure(false) // Set to true in production with HTTPS
+                .path("/")
+                .maxAge(0) // Expire immediately
+                .sameSite("Lax")
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        return ResponseEntity.ok().build();
+    }
+
+    private void setTokenCookie(HttpServletResponse response, String token) {
+        if (token != null && !token.isEmpty()) {
+            ResponseCookie cookie = ResponseCookie.from("authToken", token)
+                    .httpOnly(true)
+                    .secure(false) // Set to true in production with HTTPS
+                    .path("/")
+                    .maxAge(24 * 60 * 60) // 24 hours
+                    .sameSite("Lax")
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        }
     }
 }
