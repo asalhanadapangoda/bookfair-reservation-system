@@ -62,92 +62,14 @@ const SignInForm = ({
                 </Typography>
             </Box>
 
-            <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="email"
-                label="Email Address"
-                name="email"
-                autoComplete="email"
-                autoFocus
-                value={formData.email}
-                onChange={handleChange}
-                error={!!errors.email}
-                helperText={errors.email}
-                InputProps={{
-                    startAdornment: (
-                        <InputAdornment position="start">
-                            <Email color="action" />
-                        </InputAdornment>
-                    ),
-                }}
-                sx={inputSx}
-            />
-            <TextField
-                margin="normal"
-                required
-                fullWidth
-                name="password"
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                autoComplete="current-password"
-                value={formData.password}
-                onChange={handleChange}
-                error={!!errors.password}
-                helperText={passwordHelperText ?? errors.password}
-                InputProps={{
-                    startAdornment: (
-                        <InputAdornment position="start">
-                            <Lock color="action" />
-                        </InputAdornment>
-                    ),
-                    endAdornment: (
-                        <InputAdornment position="end">
-                            <IconButton
-                                aria-label="toggle password visibility"
-                                onClick={togglePasswordVisibility}
-                                edge="end"
-                            >
-                                {showPassword ? <VisibilityOff /> : <Visibility />}
-                            </IconButton>
-                        </InputAdornment>
-                    )
-                }}
-                sx={inputSx}
-            />
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 3 }}>
-                <FormControlLabel
-                    control={
-                        <Checkbox
-                            value="remember"
-                            color="primary"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                        />
-                    }
-                    label={<Typography variant="body2">Remember me</Typography>}
-                />
-                <Link
-                    component={RouterLink}
-                    to="/forgot-password"
-                    variant="body2"
-                    underline="hover"
-                    sx={{ fontWeight: 'bold' }}
-                >
-                    Forgot Password?
-                </Link>
-            </Box>
-
-            <Box sx={{ transition: 'transform 0.2s ease', '&:hover': { transform: 'translateY(-1px)' } }}>
+            <Box sx={{ mt: 6, mb: 4, transition: 'transform 0.2s ease', '&:hover': { transform: 'translateY(-1px)' } }}>
                 <Button
-                    type="submit"
                     fullWidth
                     variant="contained"
                     size="large"
-                    disabled={loading}
+                    onClick={() => {
+                        window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+                    }}
                     sx={{
                         py: 1.5,
                         borderRadius: '14px',
@@ -161,26 +83,13 @@ const SignInForm = ({
                         },
                     }}
                 >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : (
-                        <>
-                            Sign In <LoginIcon sx={{ ml: 1, fontSize: 20 }} />
-                        </>
-                    )}
+                    Sign In with Google <LoginIcon sx={{ ml: 1, fontSize: 20 }} />
                 </Button>
             </Box>
 
             <Box sx={{ mt: 3, textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
-                    Don't have an account?{' '}
-                    <Link
-                        component={RouterLink}
-                        to="/register"
-                        variant="subtitle2"
-                        underline="hover"
-                        sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}
-                    >
-                        Sign Up
-                    </Link>
+                    Registration is handled via Google.
                 </Typography>
             </Box>
         </Box>
