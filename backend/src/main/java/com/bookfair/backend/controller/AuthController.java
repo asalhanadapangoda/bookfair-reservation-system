@@ -46,6 +46,18 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(@RequestBody com.bookfair.backend.dto.ForgotPasswordRequest request) {
+        authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Void> verifyOtp(@RequestBody com.bookfair.backend.dto.VerifyOtpRequest request) {
+        authService.verifyOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@RequestBody com.bookfair.backend.dto.PasswordResetRequest request) {
         authService.resetPassword(request);

@@ -12,12 +12,13 @@ import {
     Stack
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
-import { Email, ArrowBack, CheckCircleOutline, Lock, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Email, ArrowBack, CheckCircleOutline, Lock, Visibility, VisibilityOff, VpnKey } from '@mui/icons-material';
 import { IconButton } from '@mui/material';
 
 const ForgotPasswordForm = ({
     step,
     email,
+    otp,
     passwords,
     handleChange,
     handleSubmit,
@@ -49,7 +50,7 @@ const ForgotPasswordForm = ({
         },
     };
 
-    if (step === 3) {
+    if (step === 4) {
         return (
             <Box sx={{ textAlign: 'center', py: 4, width: '100%' }}>
                 <Box
@@ -93,14 +94,14 @@ const ForgotPasswordForm = ({
         <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
             <Box sx={{ mb: 4, textAlign: 'center' }}>
                 <Typography component="h1" variant="h4" fontWeight={700} color="text.primary">
-                    {step === 1 ? "Forgot Password" : "Reset Password"}
+                    {step === 1 ? "Forgot Password" : step === 2 ? "Verify OTP" : "Reset Password"}
                 </Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    {step === 1 ? "Enter your email to verify your account" : `Resetting password for ${email}`}
+                    {step === 1 ? "Enter your email to receive an OTP" : step === 2 ? `Enter the OTP sent to ${email}` : `Set a new password for ${email}`}
                 </Typography>
             </Box>
 
-            {step === 1 ? (
+            {step === 1 && (
                 <TextField
                     margin="normal"
                     required
@@ -123,7 +124,33 @@ const ForgotPasswordForm = ({
                     }}
                     sx={inputSx}
                 />
-            ) : (
+            )}
+            {step === 2 && (
+                <TextField
+                    margin="normal"
+                    required
+                    fullWidth
+                    id="otp"
+                    label="6-Digit OTP"
+                    name="otp"
+                    autoComplete="off"
+                    autoFocus
+                    value={otp}
+                    onChange={handleChange}
+                    error={!!error}
+                    helperText={error}
+                    inputProps={{ maxLength: 6 }}
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <VpnKey color="action" />
+                            </InputAdornment>
+                        ),
+                    }}
+                    sx={inputSx}
+                />
+            )}
+            {step === 3 && (
                 <Stack spacing={1}>
                     <TextField
                         margin="normal"
@@ -198,7 +225,7 @@ const ForgotPasswordForm = ({
                         },
                     }}
                 >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : (step === 1 ? 'Verify Email' : 'Update Password')}
+                    {loading ? <CircularProgress size={24} color="inherit" /> : (step === 1 ? 'Send OTP' : step === 2 ? 'Verify OTP' : 'Update Password')}
                 </Button>
             </Box>
 

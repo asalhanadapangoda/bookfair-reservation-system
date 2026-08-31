@@ -9,6 +9,12 @@ import com.bookfair.backend.model.User;
 import com.bookfair.backend.repository.UserRepository;
 import com.bookfair.backend.service.AuthService;
 import com.bookfair.backend.util.CommonMessages;
+import com.bookfair.backend.model.PasswordResetToken;
+import com.bookfair.backend.repository.PasswordResetTokenRepository;
+import com.bookfair.backend.service.EmailService;
+import java.time.LocalDateTime;
+import java.util.UUID;
+import java.security.SecureRandom;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -17,11 +23,15 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final EmailService emailService;
 
-
-    public AuthServiceImpl(UserRepository userRepository, JwtService jwtService) {
+    public AuthServiceImpl(UserRepository userRepository, JwtService jwtService,
+                           PasswordResetTokenRepository tokenRepository, EmailService emailService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
+        this.tokenRepository = tokenRepository;
+        this.emailService = emailService;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
@@ -73,14 +83,63 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @org.springframework.transaction.annotation.Transactional
-    public void resetPassword(com.bookfair.backend.dto.PasswordResetRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
+    public void forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException(CommonMessages.USER_NOT_FOUND));
+
+        tokenRepository.deleteByUser(user);
+
+        SecureRandom random = new SecureRandom();
+        int otp = 100000 + random.nextInt(900000);
+        String token = String.valueOf(otp);
+        
+        PasswordResetToken resetToken = new PasswordResetToken();
+        resetToken.setToken(token);
+        resetToken.setUser(user);
+        resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
+        tokenRepository.save(resetToken);
+
+        emailService.sendPasswordResetEmail(user.getEmail(), token);
+    }
+
+    @Override
+    public void verifyOtp(String email, String otp) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(otp)
+                .orElseThrow(() -> new RuntimeException("Invalid or missing OTP"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            tokenRepository.delete(resetToken);
+            throw new RuntimeException("OTP has expired");
+        }
+
+        if (!resetToken.getUser().getEmail().equals(email)) {
+            throw new RuntimeException("OTP does not belong to this email");
+        }
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void resetPassword(com.bookfair.backend.dto.PasswordResetRequest request) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(request.getOtp())
+                .orElseThrow(() -> new RuntimeException("Invalid or missing OTP"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            tokenRepository.delete(resetToken);
+            throw new RuntimeException("Token has expired");
+        }
+
+        if (!resetToken.getUser().getEmail().equals(request.getEmail())) {
+            throw new RuntimeException("Token does not belong to this email");
+        }
+
+        User user = resetToken.getUser();
         
         validatePasswordComplexity(request.getNewPassword());
         
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        
+        tokenRepository.delete(resetToken);
     }
 
     private void validatePasswordComplexity(String password) {

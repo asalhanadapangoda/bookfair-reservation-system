@@ -7,8 +7,6 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PasswordResetRequest {
-    private String otp;
+public class ForgotPasswordRequest {
     private String email;
-    private String newPassword;
 }

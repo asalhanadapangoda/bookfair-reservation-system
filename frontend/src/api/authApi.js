@@ -70,14 +70,46 @@ export const verifyEmail = async (email) => {
 };
 
 /**
+ * Request password reset (sends OTP)
+ * @param {string} email 
+ * @returns {Promise<Object>}
+ */
+export const forgotPassword = async (email) => {
+    try {
+        const response = await client.post('/auth/forgot-password', { email });
+        return { success: true, data: response.data };
+    } catch (error) {
+        const message = error.response?.data?.message || 'Failed to send OTP.';
+        throw new Error(message);
+    }
+};
+
+/**
+ * Verify OTP
+ * @param {string} email 
+ * @param {string} otp 
+ * @returns {Promise<Object>}
+ */
+export const verifyOtp = async (email, otp) => {
+    try {
+        const response = await client.post('/auth/verify-otp', { email, otp });
+        return { success: true, data: response.data };
+    } catch (error) {
+        const message = error.response?.data?.message || 'Invalid or expired OTP.';
+        throw new Error(message);
+    }
+};
+
+/**
  * Reset password
  * @param {string} email 
+ * @param {string} otp
  * @param {string} newPassword 
  * @returns {Promise<Object>} Response data
  */
-export const resetPasswordNew = async (email, newPassword) => {
+export const resetPasswordNew = async (email, otp, newPassword) => {
     try {
-        const response = await client.post('/auth/reset-password', { email, newPassword });
+        const response = await client.post('/auth/reset-password', { email, otp, newPassword });
         return { success: true, data: response.data };
     } catch (error) {
         const message = error.response?.data?.message || 'Reset failed.';

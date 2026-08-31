@@ -8,5 +8,7 @@ public interface AuthService {
     AuthResponse register (RegisterRequest registerRequest);
     AuthResponse login (LoginRequest loginRequest);
     boolean existsByEmail(String email);
+    void forgotPassword(String email);
+    void verifyOtp(String email, String otp);
     void resetPassword(com.bookfair.backend.dto.PasswordResetRequest request);
 }
