@@ -26,6 +26,30 @@ public class AuthController {
         return ResponseEntity.ok("Auth controller reachable");
     }
 
+    @GetMapping("/me")
+    public ResponseEntity<java.util.Map<String, Object>> getMe() {
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return ResponseEntity.status(401).build();
+        }
+
+        java.util.Map<String, Object> response = new java.util.HashMap<>();
+        response.put("email", auth.getName());
+        
+        if (!auth.getAuthorities().isEmpty()) {
+            response.put("role", auth.getAuthorities().iterator().next().getAuthority().replace("ROLE_", ""));
+        }
+
+        if (auth.getDetails() instanceof java.util.Map) {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, Object> details = (java.util.Map<String, Object>) auth.getDetails();
+            response.put("userId", details.get("userId"));
+            response.put("name", details.get("name"));
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest registerRequest, HttpServletResponse response) {
         AuthResponse authResponse = authService.register(registerRequest);

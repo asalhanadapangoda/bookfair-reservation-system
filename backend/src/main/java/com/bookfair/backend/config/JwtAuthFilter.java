@@ -20,7 +20,6 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final CustomUserDetailsService userDetailsService;
     private final com.bookfair.backend.repository.BlacklistedTokenRepository blacklistedTokenRepository;
 
     @Override
@@ -64,15 +63,32 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         try {
             userEmail = jwtService.extractUsername(jwt);
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+                // Read claims directly from token instead of hitting the database
+                String role = jwtService.extractClaim(jwt, claims -> claims.get("role", String.class));
+                Long userId = jwtService.extractClaim(jwt, claims -> claims.get("userId", Long.class));
+                String name = jwtService.extractClaim(jwt, claims -> claims.get("name", String.class));
+                
+                if (role != null && jwtService.isTokenValid(jwt, userEmail)) {
+                    // Reconstruct UserDetails from claims
+                    UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                            userEmail,
+                            "", // No password needed for JWT validation
+                            java.util.Collections.singleton(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + role))
+                    );
 
-                if (jwtService.isTokenValid(jwt, userDetails.getUsername())) {
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,
                             userDetails.getAuthorities()
                     );
-                    authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    
+                    // We can also store the extra claims in the details object for easy access in controllers
+                    java.util.Map<String, Object> details = new java.util.HashMap<>();
+                    details.put("userId", userId);
+                    details.put("name", name);
+                    details.put("webDetails", new WebAuthenticationDetailsSource().buildDetails(request));
+                    
+                    authToken.setDetails(details);
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 }
             }

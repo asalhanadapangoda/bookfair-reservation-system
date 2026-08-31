@@ -158,3 +158,27 @@ export const logoutUser = async () => {
     }
     localStorage.removeItem('user');
 };
+/**
+ * Fetch authenticated user from backend claims
+ */
+export const fetchMe = async () => {
+    try {
+        const response = await client.get('/auth/me');
+        if (response.data) {
+            const userData = {
+                email: response.data.email,
+                role: response.data.role,
+                userId: response.data.userId,
+                name: response.data.name,
+                businessName: response.data.name, // Fallback
+                contactPerson: response.data.name, // Fallback
+            };
+            localStorage.setItem('user', JSON.stringify(userData));
+            return userData;
+        }
+    } catch (error) {
+        console.error("fetchMe failed", error);
+        localStorage.removeItem('user');
+    }
+    return null;
+};
